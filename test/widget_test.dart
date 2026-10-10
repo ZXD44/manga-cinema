@@ -5,8 +5,9 @@ import 'package:manga_cinema_app/services/auto_update_service.dart';
 
 void main() {
   test('AutoUpdateService semantic version comparison check', () {
-    expect(AutoUpdateService.currentVersion, '1.0.1');
+    expect(AutoUpdateService.currentVersion, '1.0.2');
   });
+
 
   test('MangaStoryChapter domain model integrity', () {
     const chapter = MangaStoryChapter(
