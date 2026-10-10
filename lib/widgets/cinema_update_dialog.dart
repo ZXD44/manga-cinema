@@ -243,13 +243,39 @@ class _CinemaUpdateDialogState extends State<CinemaUpdateDialog> {
                     ),
                     onPressed: _isDownloading ? null : _startUpdate,
                     child: Text(
-                      _isDownloading ? 'กำลังโหลด...' : 'อัปเดตทันที',
+                      _isDownloading ? 'กำลังโหลด...' : 'อัปเดตทันที (APK)',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
               ],
             ),
+            if (rel.ipaDownloadUrl.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Center(
+                child: TextButton.icon(
+                  icon: const Icon(Icons.apple, size: 18, color: CinemaColors.textSecondary),
+                  label: const Text(
+                    'ดาวน์โหลดไฟล์สำหรับ iOS (Manga-Cinema.ipa)',
+                    style: TextStyle(
+                      color: CinemaColors.textSecondary,
+                      fontSize: 12,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: rel.ipaDownloadUrl));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('คัดลอกลิงก์ดาวน์โหลด Manga-Cinema.ipa แล้ว'),
+                        backgroundColor: CinemaColors.bgSurface,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+
           ],
         ),
       ),

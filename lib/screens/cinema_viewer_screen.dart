@@ -18,11 +18,29 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
   final TextEditingController _urlController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoUpdateOnStartup();
+    });
+  }
+
+  Future<void> _checkAutoUpdateOnStartup() async {
+    try {
+      final info = await AutoUpdateService.checkForUpdate();
+      if (mounted && info != null && info.hasUpdate) {
+        CinemaUpdateDialog.show(context, info);
+      }
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
     _verticalScrollController.dispose();
     _urlController.dispose();
     super.dispose();
   }
+
 
   void _showUrlInputDialog(BuildContext context) {
     _urlController.text =
