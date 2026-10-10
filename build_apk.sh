@@ -125,23 +125,24 @@ do_github_release() {
     git push origin main --tags -f
 
     echo ""
-    echo -e "${GREEN}${BOLD}✓ ยิง Tag v$VER ขึ้น GitHub สำเร็จ!${NC}"
-    echo -e "${CYAN}🍏 GitHub Actions เริ่มคอมไพล์ Android APK + iOS IPA บน Cloud Runner อัตโนมัติ...${NC}"
-    echo -e "🔗 หน้า Actions Workflow: ${CYAN}${GITHUB_URL}/actions${NC}"
+    echo -e "${GREEN}${BOLD}✓ ส่ง Tag v$VER ขึ้น GitHub เพื่อเริ่มคอมไพล์แล้ว!${NC}"
+    echo -e "${CYAN}🚀 กำลังคอมไพล์ Android APK (Ubuntu) และ iOS IPA (macOS) พร้อมกัน...${NC}"
+    echo -e "${YELLOW}⏳ รอระบบคอมไพล์เสร็จเพื่อแนบทั้ง .apk และ .ipa พร้อมกัน 100% (ประมาณ 3-5 นาที)...${NC}"
     echo ""
-    
-    read -p "🍏 ต้องการให้แสดงสถานะและรอแนบ iOS IPA อัตโนมัติเลยไหม? (y/N): " -r WATCH_IPA
-    if [[ "$WATCH_IPA" =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}⏳ กำลังติดตามสถานะการคอมไพล์บน macOS Server...${NC}"
-        sleep 5
-        local RUN_ID=$(gh run list --workflow="build_release.yml" -L 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)
-        if [ -n "$RUN_ID" ]; then
-            gh run watch "$RUN_ID" --exit-status || true
-            echo -e "${GREEN}✓ การคอมไพล์บน macOS เสร็จสิ้น! ตรวจสอบ Release v$VER${NC}"
-            gh release view "v$VER"
-        fi
+
+    sleep 6
+    local RUN_ID=$(gh run list --workflow="build_release.yml" -L 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)
+    if [ -n "$RUN_ID" ]; then
+        gh run watch "$RUN_ID" --exit-status || true
     fi
+
+    echo ""
+    echo -e "${GREEN}${BOLD}============================================================${NC}"
+    echo -e "${GREEN}${BOLD}🎉 ปล่อย Release v$VER พร้อมไฟล์ APK และ IPA เรียบร้อยแล้ว!${NC}"
+    echo -e "${GREEN}${BOLD}============================================================${NC}"
+    gh release view "v$VER"
 }
+
 
 
 # Check flags
