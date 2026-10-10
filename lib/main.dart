@@ -33,58 +33,72 @@ class MangaCinemaApp extends StatelessWidget {
   }
 
   static MangaStoryChapter _mockInitialChapter() {
-    return const MangaStoryChapter(
-      title: 'Solo Leveling (AI Motion Demo)',
-      episodeNumber: 'ตอนที่ 01: การตื่นขึ้น',
-      stripImages: [],
-      keyframes: [
-        PanelKeyframe(
-          panelId: 'P1-01',
-          panelRect: Rect.fromLTWH(0.0, 0.0, 1.0, 0.3),
-          bubbles: [
-            BubbleAnnotation(
-              id: 'B1',
-              speechText: 'ในโลกที่เต็มไปด้วยดันเจี้ยนและมอนสเตอร์...',
-              role: DialogueRole.narrator,
-              boundingBox: Rect.fromLTWH(0.1, 0.05, 0.8, 0.1),
-              pauseSeconds: 1.2,
-            ),
-          ],
-        ),
-        PanelKeyframe(
-          panelId: 'P1-02',
-          panelRect: Rect.fromLTWH(0.0, 0.3, 1.0, 0.4),
-          bubbles: [
-            BubbleAnnotation(
-              id: 'B2',
-              speechText: 'ทำไมฉันถึงอ่อนแอขนาดนี้กันนะ...',
-              role: DialogueRole.thought,
-              boundingBox: Rect.fromLTWH(0.15, 0.35, 0.7, 0.1),
-              pauseSeconds: 1.0,
-            ),
-            BubbleAnnotation(
-              id: 'B3',
-              speechText: 'ระวังข้างหลัง! มันกำลังพุ่งเข้ามาแล้ว!',
-              role: DialogueRole.hero,
-              boundingBox: Rect.fromLTWH(0.2, 0.5, 0.6, 0.1),
-              pauseSeconds: 1.5,
-            ),
-          ],
-        ),
-        PanelKeyframe(
-          panelId: 'P1-03',
-          panelRect: Rect.fromLTWH(0.0, 0.7, 1.0, 0.3),
-          bubbles: [
-            BubbleAnnotation(
-              id: 'B4',
-              speechText: 'ยอมจำนนซะเถอะ เจ้าฮันเตอร์ระดับ E!',
-              role: DialogueRole.villain,
-              boundingBox: Rect.fromLTWH(0.1, 0.75, 0.8, 0.1),
-              pauseSeconds: 1.5,
-            ),
-          ],
-        ),
-      ],
+    const pages = [
+      WebtoonPageItem(
+        pageIndex: 1,
+        imageUrl:
+            'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1000&q=80',
+        bubbles: [
+          BubbleAnnotation(
+            id: 'B1',
+            speechText: 'The Return of the Scorned Genius: การหวนคืนของอัจฉริยะผู้ถูกเหยียดหยาม',
+            role: DialogueRole.narrator,
+            boundingBox: Rect.fromLTWH(0.1, 0.05, 0.8, 0.1),
+            pauseSeconds: 1.2,
+          ),
+        ],
+      ),
+      WebtoonPageItem(
+        pageIndex: 2,
+        imageUrl:
+            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1000&q=80',
+        bubbles: [
+          BubbleAnnotation(
+            id: 'B2',
+            speechText: 'ทำไมพวกมันถึงกล้าทรยศและเหยียบย่ำศักดิ์ศรีของข้าถึงขนาดนี้...',
+            role: DialogueRole.thought,
+            boundingBox: Rect.fromLTWH(0.15, 0.35, 0.7, 0.1),
+            pauseSeconds: 1.2,
+          ),
+          BubbleAnnotation(
+            id: 'B3',
+            speechText: 'ข้าจะทำให้พวกมันทุกคนต้องชดใช้ด้วยชีวิต!',
+            role: DialogueRole.hero,
+            boundingBox: Rect.fromLTWH(0.2, 0.5, 0.6, 0.1),
+            pauseSeconds: 1.5,
+          ),
+        ],
+      ),
+      WebtoonPageItem(
+        pageIndex: 3,
+        imageUrl:
+            'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1000&q=80',
+        bubbles: [
+          BubbleAnnotation(
+            id: 'B4',
+            speechText: 'ฮ่าๆๆ! เจ้ามันก็แค่เศษสวะที่ไม่มีวันตามพวกเราทันหรอก!',
+            role: DialogueRole.villain,
+            boundingBox: Rect.fromLTWH(0.1, 0.75, 0.8, 0.1),
+            pauseSeconds: 1.5,
+          ),
+        ],
+      ),
+    ];
+
+    return MangaStoryChapter(
+      title: 'The Return of the Scorned Genius',
+      episodeNumber: 'ตอนที่ 1 (DukeToon Edition)',
+      sourceUrl:
+          'https://duketoon.com/content/the-return-of-the-scorned-genius/1',
+      stripImages: pages.map((p) => p.imageUrl).toList(),
+      pages: pages,
+      keyframes: pages.map((p) {
+        return PanelKeyframe(
+          panelId: 'P-${p.pageIndex}',
+          panelRect: Rect.fromLTWH(0.0, (p.pageIndex - 1) * 0.33, 1.0, 0.33),
+          bubbles: p.bubbles,
+        );
+      }).toList(),
     );
   }
 }

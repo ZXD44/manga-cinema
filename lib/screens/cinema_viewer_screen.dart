@@ -6,15 +6,213 @@ import '../state/cinema_playback_state.dart';
 import '../theme/cinema_colors.dart';
 import '../widgets/cinema_update_dialog.dart';
 
-
-class CinemaViewerScreen extends StatelessWidget {
+class CinemaViewerScreen extends StatefulWidget {
   const CinemaViewerScreen({super.key});
+
+  @override
+  State<CinemaViewerScreen> createState() => _CinemaViewerScreenState();
+}
+
+class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
+  final ScrollController _verticalScrollController = ScrollController();
+  final TextEditingController _urlController = TextEditingController();
+
+  @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  void _showUrlInputDialog(BuildContext context) {
+    _urlController.text =
+        'https://duketoon.com/content/the-return-of-the-scorned-genius/1';
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: CinemaColors.bgSurface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: CinemaColors.brandPrimary.withAlpha(90),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: CinemaColors.brandPrimary.withAlpha(50),
+                  blurRadius: 30,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: CinemaColors.brandPrimary.withAlpha(35),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.link_rounded,
+                        color: CinemaColors.brandPrimary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'เปิดเว็บตูนจาก Web URL',
+                            style: TextStyle(
+                              color: CinemaColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'รองรับ DukeToon, MangaPlus, หรือ Webtoon URL',
+                            style: TextStyle(
+                              color: CinemaColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: _urlController,
+                  style: const TextStyle(
+                    color: CinemaColors.textPrimary,
+                    fontSize: 14,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'https://duketoon.com/content/.../1',
+                    hintStyle: const TextStyle(color: CinemaColors.textMuted),
+                    filled: true,
+                    fillColor: CinemaColors.bgPrimary,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: CinemaColors.bgBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: CinemaColors.bgBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: CinemaColors.brandPrimary,
+                        width: 1.8,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: CinemaColors.textSecondary,
+                          side: const BorderSide(color: CinemaColors.bgBorder),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () => Navigator.of(dialogCtx).pop(),
+                        child: const Text('ยกเลิก'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: CinemaColors.brandPrimary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final targetUrl = _urlController.text.trim();
+                          if (targetUrl.isNotEmpty) {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final playback = context.read<CinemaPlaybackState>();
+                            Navigator.of(dialogCtx).pop();
+                            final ok = await playback.loadFromWebtoonUrl(targetUrl);
+                            if (mounted && ok) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'โหลดสำเร็จ: ${playback.chapter?.title ?? ""}',
+                                  ),
+                                  backgroundColor: CinemaColors.statusSyncActive,
+                                ),
+                              );
+                            }
+                          }
+                        },
+
+                        child: const Text(
+                          'เริ่มดูภาพยนตร์',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _animateScrollToActivePanel(int panelIndex) {
+    if (!_verticalScrollController.hasClients) return;
+    final targetOffset = panelIndex * 520.0;
+    _verticalScrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 750),
+      curve: Curves.easeInOutCubic,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final playback = context.watch<CinemaPlaybackState>();
-    final panel = playback.currentPanel;
+    final chapter = playback.chapter;
     final bubble = playback.currentBubble;
+
+    // เลื่อนกล้องตามช่องที่กำลังเล่นอัตโนมัติ
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (playback.isPlaying) {
+        _animateScrollToActivePanel(playback.currentPanelIndex);
+      }
+    });
 
     return Scaffold(
       backgroundColor: CinemaColors.bgPrimary,
@@ -22,235 +220,336 @@ class CinemaViewerScreen extends StatelessWidget {
         onTap: () => playback.toggleOverlay(),
         child: Stack(
           children: [
-            // Cinema Visual Canvas
-            Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 700),
-                curve: Curves.easeInOutCubic,
-                decoration: BoxDecoration(
-                  color: CinemaColors.bgSurface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: CinemaColors.bgBorder, width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: CinemaColors.brandPrimary.withAlpha(30),
-                      blurRadius: 30,
-                      spreadRadius: 2,
+            // 1. Vertical Webtoon Strip Canvas with Auto-Scroll & High Quality Images
+            if (playback.isLoadingUrl)
+              const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: CinemaColors.brandPrimary),
+                    SizedBox(height: 16),
+                    Text(
+                      'กำลังดึงรูปภาพและสังเคราะห์เสียงจาก URL...',
+                      style: TextStyle(
+                        color: CinemaColors.textSecondary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
-                width: MediaQuery.of(context).size.width * 0.92,
-                height: MediaQuery.of(context).size.height * 0.72,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Stack(
-                    children: [
-                      // Panel Visual Placeholder
-                      Container(
-                        color: const Color(0xFF181822),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.auto_stories,
-                                size: 64,
-                                color: CinemaColors.brandSecondary.withAlpha(120),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                panel != null
-                                    ? 'Panel ${panel.panelId}'
-                                    : 'กำลังโหลดตอน...',
-                                style: const TextStyle(
-                                  color: CinemaColors.textSecondary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+              )
+            else if (chapter != null && chapter.pages.isNotEmpty)
+              ListView.builder(
+                controller: _verticalScrollController,
+                padding: const EdgeInsets.symmetric(vertical: 90),
+                itemCount: chapter.pages.length,
+                itemBuilder: (context, index) {
+                  final pageItem = chapter.pages[index];
+                  final isActivePanel = playback.currentPanelIndex == index;
 
-                      // Speech Bubble Highlight Overlay
-                      if (bubble != null)
-                        Positioned(
-                          left: 20,
-                          right: 20,
-                          bottom: 24,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: CinemaColors.bgSurfaceGlass,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: CinemaColors.brandPrimary,
-                                width: 1.8,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                _buildRoleIcon(bubble.role),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    bubble.speechText,
-                                    style: const TextStyle(
-                                      color: CinemaColors.textPrimary,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.35,
+                  return Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 680),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: isActivePanel
+                              ? CinemaColors.brandPrimary
+                              : CinemaColors.bgBorder,
+                          width: isActivePanel ? 2.5 : 1.0,
+                        ),
+                        boxShadow: isActivePanel
+                            ? [
+                                BoxShadow(
+                                  color: CinemaColors.brandPrimary.withAlpha(60),
+                                  blurRadius: 35,
+                                  spreadRadius: 3,
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Stack(
+                          children: [
+                            Image.network(
+                              pageItem.imageUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: 480,
+                              loadingBuilder: (ctx, child, progress) {
+                                if (progress == null) return child;
+                                return Container(
+                                  height: 480,
+                                  color: CinemaColors.bgSurface,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: CinemaColors.brandSecondary,
+                                      strokeWidth: 2,
                                     ),
                                   ),
+                                );
+                              },
+                              errorBuilder: (ctx, error, stackTrace) {
+                                return Container(
+
+                                  height: 480,
+                                  color: CinemaColors.bgSurface,
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.broken_image_rounded,
+                                      color: CinemaColors.textMuted,
+                                      size: 48,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
+                            // Ambient Dimming เมื่อไม่ใช่ช่องที่กำลังพูด
+                            if (!isActivePanel)
+                              Container(
+                                height: 480,
+                                color: Colors.black.withAlpha(120),
+                              ),
+
+                            // Badge ลำดับช่อง
+                            Positioned(
+                              top: 14,
+                              left: 14,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
                                 ),
-                              ],
+                                decoration: BoxDecoration(
+                                  color: CinemaColors.bgSurfaceGlass,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isActivePanel
+                                        ? CinemaColors.brandPrimary
+                                        : CinemaColors.bgBorder,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Page ${pageItem.pageIndex}',
+                                  style: TextStyle(
+                                    color: isActivePanel
+                                        ? CinemaColors.brandPrimary
+                                        : CinemaColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              )
+            else
+              const Center(
+                child: Text(
+                  'กดไอคอนลิงก์ด้านบนเพื่อใส่ Webtoon URL',
+                  style: TextStyle(color: CinemaColors.textSecondary),
+                ),
+              ),
+
+            // 2. Subtitle & Active Speech Bubble Floating Overlay
+            if (bubble != null)
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: 110,
+                child: Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 640),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: CinemaColors.bgSurfaceGlass,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: CinemaColors.brandPrimary,
+                        width: 2.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(150),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        _buildRoleIcon(bubble.role),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            bubble.speechText,
+                            style: const TextStyle(
+                              color: CinemaColors.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 1.4,
                             ),
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Top Status Bar Overlay
+            // 3. Top Status & Navigation Bar Overlay
             if (playback.showOverlay)
               Positioned(
                 top: 48,
-                left: 20,
-                right: 20,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          playback.chapter?.title ?? 'Manga Cinema',
-                          style: const TextStyle(
-                            color: CinemaColors.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          playback.chapter?.episodeNumber ?? 'EP. 1',
-                          style: const TextStyle(
-                            color: CinemaColors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          tooltip: 'ตรวจสอบอัปเดตเวอร์ชัน',
-                          icon: const Icon(
-                            Icons.cloud_download_outlined,
-                            color: CinemaColors.textSecondary,
-                            size: 22,
-                          ),
-                          onPressed: () async {
-                            final info = await AutoUpdateService.checkForUpdate();
-                            if (context.mounted) {
-                              if (info != null && info.hasUpdate) {
-                                CinemaUpdateDialog.show(context, info);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('คุณกำลังใช้งานเวอร์ชันล่าสุด (v${AutoUpdateService.currentVersion}) อยู่แล้ว'),
-                                    backgroundColor: CinemaColors.bgSurface,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: playback.isPlaying
-                                ? CinemaColors.statusSyncActive.withAlpha(40)
-                                : CinemaColors.bgBorder,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.fiber_manual_record,
-                                size: 10,
-                                color: playback.isPlaying
-                                    ? CinemaColors.statusSyncActive
-                                    : CinemaColors.textMuted,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                playback.isPlaying ? 'AI DUBBING' : 'PAUSED',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: playback.isPlaying
-                                      ? CinemaColors.statusSyncActive
-                                      : CinemaColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                  ],
-                ),
-              ),
-
-            // Bottom Floating Controls Overlay
-            if (playback.showOverlay)
-              Positioned(
-                bottom: 36,
-                left: 24,
-                right: 24,
+                left: 16,
+                right: 16,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 12,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     color: CinemaColors.bgSurfaceGlass,
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: CinemaColors.bgBorder),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.skip_previous),
-                        color: CinemaColors.textSecondary,
-                        onPressed: () => playback.previousPanel(),
+                        tooltip: 'ใส่ Webtoon URL',
+                        icon: const Icon(
+                          Icons.add_link_rounded,
+                          color: CinemaColors.brandPrimary,
+                          size: 26,
+                        ),
+                        onPressed: () => _showUrlInputDialog(context),
                       ),
-                      FloatingActionButton.small(
-                        backgroundColor: CinemaColors.brandPrimary,
-                        onPressed: () => playback.togglePlayPause(),
-                        child: Icon(
-                          playback.isPlaying ? Icons.pause : Icons.play_arrow,
-                          color: Colors.white,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              chapter?.title ?? 'Manga Cinema',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: CinemaColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              chapter?.episodeNumber ?? 'วาง URL เพื่อเริ่มอ่าน',
+                              style: const TextStyle(
+                                color: CinemaColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.skip_next),
-                        color: CinemaColors.textSecondary,
-                        onPressed: () => playback.nextPanel(),
+                        tooltip: 'ตรวจสอบอัปเดตเวอร์ชัน',
+                        icon: const Icon(
+                          Icons.cloud_download_outlined,
+                          color: CinemaColors.textSecondary,
+                          size: 22,
+                        ),
+                        onPressed: () async {
+                          final info = await AutoUpdateService.checkForUpdate();
+                          if (context.mounted) {
+                            if (info != null && info.hasUpdate) {
+                              CinemaUpdateDialog.show(context, info);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'คุณกำลังใช้งานเวอร์ชันล่าสุดอยู่แล้ว',
+                                  ),
+                                  backgroundColor: CinemaColors.bgSurface,
+                                ),
+                              );
+                            }
+                          }
+                        },
                       ),
                     ],
+                  ),
+                ),
+              ),
+
+            // 4. Bottom Floating Cinema Controller Overlay
+            if (playback.showOverlay)
+              Positioned(
+                bottom: 30,
+                left: 24,
+                right: 24,
+                child: Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: CinemaColors.bgSurfaceGlass,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: CinemaColors.bgBorder),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(160),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.skip_previous_rounded),
+                          color: CinemaColors.textSecondary,
+                          onPressed: () => playback.previousPanel(),
+                        ),
+                        FloatingActionButton(
+                          backgroundColor: CinemaColors.brandPrimary,
+                          elevation: 6,
+                          onPressed: () => playback.togglePlayPause(),
+                          child: Icon(
+                            playback.isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 32,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.skip_next_rounded),
+                          color: CinemaColors.textSecondary,
+                          onPressed: () => playback.nextPanel(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -288,9 +587,9 @@ class CinemaViewerScreen extends StatelessWidget {
     }
 
     return CircleAvatar(
-      radius: 16,
-      backgroundColor: iconColor.withAlpha(40),
-      child: Icon(iconData, size: 18, color: iconColor),
+      radius: 18,
+      backgroundColor: iconColor.withAlpha(45),
+      child: Icon(iconData, size: 20, color: iconColor),
     );
   }
 }

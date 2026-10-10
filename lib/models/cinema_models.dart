@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 enum DialogueRole {
-
   narrator,
   hero,
   heroine,
@@ -27,9 +26,21 @@ class BubbleAnnotation {
   });
 }
 
+class WebtoonPageItem {
+  final int pageIndex;
+  final String imageUrl;
+  final List<BubbleAnnotation> bubbles;
+
+  const WebtoonPageItem({
+    required this.pageIndex,
+    required this.imageUrl,
+    this.bubbles = const [],
+  });
+}
+
 class PanelKeyframe {
   final String panelId;
-  final Rect panelRect; // Normalized 0.0 - 1.0 coordinate
+  final Rect panelRect;
   final List<BubbleAnnotation> bubbles;
   final double zoomFactor;
 
@@ -44,13 +55,17 @@ class PanelKeyframe {
 class MangaStoryChapter {
   final String title;
   final String episodeNumber;
+  final String sourceUrl;
   final List<String> stripImages;
+  final List<WebtoonPageItem> pages;
   final List<PanelKeyframe> keyframes;
 
   const MangaStoryChapter({
     required this.title,
     required this.episodeNumber,
+    this.sourceUrl = '',
     required this.stripImages,
+    this.pages = const [],
     required this.keyframes,
   });
 }
