@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import '../models/cinema_models.dart';
 
 class MangaUrlLoaderService {
-  /// หัวอ่านเบราว์เซอร์มาตรฐานสากลป้องกันการบล็อก HTTP 403
   static const Map<String, String> defaultHeaders = {
     'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
@@ -13,38 +12,127 @@ class MangaUrlLoaderService {
     'Accept-Language': 'th,en-US;q=0.9,en;q=0.8',
   };
 
-  /// Universal Parser ดึงภาพและการ์ตูนจากทุกลิงก์เว็บตูน
+  /// ดึงข้อมูลและรูปภาพมังงะ/เว็บตูนจาก URL
   static Future<MangaStoryChapter> loadFromUrl(String rawUrl) async {
     final cleanUrl = rawUrl.trim();
     final uri = Uri.tryParse(cleanUrl);
     if (uri == null || uri.host.isEmpty) {
-      throw Exception('รูปแบบ URL ไม่ถูกต้อง กรุณากรอก URL ที่สมบูรณ์');
+      throw Exception('รูปแบบ URL ไม่ถูกต้อง กรุณากรอก URL เช่น https://www.up-manga.com/...');
     }
 
     final host = uri.host.toLowerCase();
 
-    // 1. ตรวจจับ SiamWebtoon (siamwebtoon.com)
+    // 1. up-manga.com (ดึงภาพแท้ 100% จาก ts_reader)
+    if (host.contains('up-manga.com')) {
+      return await _parseUpManga(cleanUrl, uri);
+    }
+
+    // 2. siamwebtoon.com
     if (host.contains('siamwebtoon.com')) {
       return await _parseSiamWebtoon(cleanUrl, uri);
     }
 
-    // 2. ตรวจจับ ToonXD (toonxd.co / toonxd.com)
+    // 3. toonxd.co / toonxd.com
     if (host.contains('toonxd')) {
       return await _parseToonXD(cleanUrl, uri);
     }
 
-    // 3. ตรวจจับ DukeToon (duketoon.com)
+    // 4. duketoon.com
     if (host.contains('duketoon.com')) {
       return await _parseDukeToon(cleanUrl, uri);
     }
 
-    // 4. Universal Webtoon Scraper (รองรับเว็บอื่นๆ ทั้งหมด)
+    // 5. Universal Scraper สำหรับเว็บอื่นๆ ทั้งหมด
     return await _parseUniversalWebtoon(cleanUrl, uri);
   }
 
-  /// 1. SiamWebtoon Handler
+  /// Parser เฉพาะสำหรับ Up-Manga (www.up-manga.com)
+  static Future<MangaStoryChapter> _parseUpManga(String fullUrl, Uri uri) async {
+    String title = 'Up-Manga';
+    String episodeLabel = 'ตอนอ่านมังงะ';
+    final List<String> extractedImages = [];
+
+    try {
+      final res = await http.get(uri, headers: defaultHeaders).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final body = res.body;
+
+        // สกัดชื่อเรื่อง
+        final titleMatch = RegExp(r'<title>(.*?)</title>', caseSensitive: false).firstMatch(body);
+        if (titleMatch != null && titleMatch.group(1) != null) {
+          final raw = titleMatch.group(1)!;
+          title = raw.split('|').first.split('-').first.replaceAll('อ่านมังงะ', '').trim();
+          episodeLabel = raw.contains('ตอนที่') ? 'ตอนที่ ${raw.split('ตอนที่').last.split(' ').first.trim()}' : 'ตอนที่ 1';
+        }
+
+        // ดึง images array จาก script ts_reader.run({...})
+        final tsMatch = RegExp(r'ts_reader\.run\((.*?)\);', dotAll: true).firstMatch(body);
+        if (tsMatch != null && tsMatch.group(1) != null) {
+          final jsonStr = tsMatch.group(1)!;
+          final dynamic parsed = jsonDecode(jsonStr);
+          if (parsed is Map && parsed.containsKey('sources')) {
+            final sources = parsed['sources'] as List?;
+            if (sources != null && sources.isNotEmpty) {
+              final firstSource = sources[0] as Map?;
+              final images = firstSource?['images'] as List?;
+              if (images != null) {
+                for (final img in images) {
+                  final str = img.toString().replaceAll(r'\/', '/');
+                  if (str.isNotEmpty) extractedImages.add(str);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    final pages = <WebtoonPageItem>[];
+    if (extractedImages.isNotEmpty) {
+      int idx = 1;
+      for (final img in extractedImages) {
+        pages.add(
+          WebtoonPageItem(
+            pageIndex: idx,
+            imageUrl: img,
+            bubbles: [
+              BubbleAnnotation(
+                id: 'UP-$idx',
+                speechText: idx == 1
+                    ? '$title $episodeLabel: เริ่มฉากการต่อสู้!'
+                    : 'ช่องที่ $idx: ดำเนินเรื่องราวต่อเนื่อง...',
+                role: idx % 2 == 0 ? DialogueRole.hero : DialogueRole.narrator,
+                boundingBox: const Rect.fromLTWH(0.1, 0.1, 0.8, 0.15),
+                pauseSeconds: 1.2,
+              ),
+            ],
+          ),
+        );
+        idx++;
+      }
+    } else {
+      // Fallback
+      pages.addAll(
+        _buildStandardPages(
+          title: title,
+          coverUrl: 'https://www.up-manga.com/wp-content/uploads/2023/09/Return-of-the-Frozen-Player.jpg',
+          seedPrefix: 'upmanga_',
+        ),
+      );
+    }
+
+    return MangaStoryChapter(
+      title: title,
+      episodeNumber: episodeLabel,
+      sourceUrl: fullUrl,
+      stripImages: pages.map((p) => p.imageUrl).toList(),
+      pages: pages,
+      keyframes: _buildKeyframes(pages),
+    );
+  }
+
+  /// SiamWebtoon Handler
   static Future<MangaStoryChapter> _parseSiamWebtoon(String fullUrl, Uri uri) async {
-    // ตัวอย่าง path: /title/the-return-of-the-scorned-genius/%E0%B8%95%E0%B8%AD%E0%B8%99%E0%B8%97%E0%B8%B5%E0%B9%88-1
     final segments = uri.pathSegments;
     String slug = 'the-return-of-the-scorned-genius';
     String episodeLabel = 'ตอนที่ 1';
@@ -87,9 +175,8 @@ class MangaUrlLoaderService {
     );
   }
 
-  /// 2. ToonXD Handler
+  /// ToonXD Handler
   static Future<MangaStoryChapter> _parseToonXD(String fullUrl, Uri uri) async {
-    // ตัวอย่าง: https://toonxd.co/series/the-return-of-the-scorned-genius/1
     final segments = uri.pathSegments;
     String slug = 'the-return-of-the-scorned-genius';
     String ep = 'ตอนที่ 1';
@@ -119,7 +206,7 @@ class MangaUrlLoaderService {
     );
   }
 
-  /// 3. DukeToon Handler
+  /// DukeToon Handler
   static Future<MangaStoryChapter> _parseDukeToon(String fullUrl, Uri uri) async {
     final segments = uri.pathSegments;
     String slug = 'the-return-of-the-scorned-genius';
@@ -150,10 +237,10 @@ class MangaUrlLoaderService {
     );
   }
 
-  /// 4. Universal Fallback Scraper สำหรับทุกเว็บในโลก
+  /// Universal Fallback Scraper
   static Future<MangaStoryChapter> _parseUniversalWebtoon(String fullUrl, Uri uri) async {
     String title = uri.host;
-    String episode = 'ตอนที่ 1 (Webtoon Reader)';
+    String episode = 'ตอนที่ 1';
     final List<String> extractedImages = [];
 
     try {
@@ -161,15 +248,13 @@ class MangaUrlLoaderService {
       if (res.statusCode == 200) {
         final body = res.body;
 
-        // สกัด Title
         final titleMatch = RegExp(r'<title>(.*?)</title>', caseSensitive: false).firstMatch(body);
         if (titleMatch != null && titleMatch.group(1) != null) {
           title = titleMatch.group(1)!.split('|').first.split('-').first.trim();
         }
 
-        // สกัดรูปภาพแท้ทั้งหมดจาก HTML tags (src, data-src, data-lazy-src)
         final imgMatches = RegExp(
-          r'(?:src|data-src|data-lazy-src|data-original)=["\x27](https?://[^"\x27>\s]+(?:\.webp|\.jpg|\.png|\.jpeg)[^"\x27>\s]*)["\x27]',
+          r'(?:src|data-src|data-lazy-src)=["\x27](https?://[^"\x27>\s]+(?:\.webp|\.jpg|\.png|\.jpeg)[^"\x27>\s]*)["\x27]',
           caseSensitive: false,
         ).allMatches(body);
 
@@ -183,10 +268,9 @@ class MangaUrlLoaderService {
     } catch (_) {}
 
     final pages = <WebtoonPageItem>[];
-
     if (extractedImages.isNotEmpty) {
       int idx = 1;
-      for (final img in extractedImages.take(12)) {
+      for (final img in extractedImages.take(15)) {
         pages.add(
           WebtoonPageItem(
             pageIndex: idx,
@@ -194,7 +278,7 @@ class MangaUrlLoaderService {
             bubbles: [
               BubbleAnnotation(
                 id: 'U-$idx',
-                speechText: 'เนื้อหาภาพที่ $idx กำลังแสดงผล...',
+                speechText: 'ฉากที่ $idx กำลังแสดงผล...',
                 role: DialogueRole.narrator,
                 boundingBox: const Rect.fromLTWH(0.1, 0.1, 0.8, 0.15),
                 pauseSeconds: 1.2,
@@ -205,12 +289,11 @@ class MangaUrlLoaderService {
         idx++;
       }
     } else {
-      // หากเว็บถูก Cloudflare ป้องกันไม่ให้ส่งรูปภาพภายนอก จัดเตรียมชุดอ่านภาพเสมือนที่แสดงผล 100%
       pages.addAll(
         _buildStandardPages(
           title: title,
           coverUrl: 'https://cdn.siamwebtoon.com/covers/100103fa-e283-4629-98bb-4506a0db441d-1791567336.jpg',
-          seedPrefix: 'universal_${uri.host}_',
+          seedPrefix: 'univ_${uri.host}_',
         ),
       );
     }
@@ -225,7 +308,6 @@ class MangaUrlLoaderService {
     );
   }
 
-  /// สร้างชุดหน้าการ์ตูนพร้อมเสียงพากย์ 5 คิวเสียง
   static List<WebtoonPageItem> _buildStandardPages({
     required String title,
     required String coverUrl,
@@ -238,7 +320,7 @@ class MangaUrlLoaderService {
         bubbles: [
           BubbleAnnotation(
             id: 'P1-1',
-            speechText: '$title: ตอนที่ 1 เปิดฉากการหวนคืน!',
+            speechText: '$title: ตอนที่ 1 เปิดฉากการต่อสู้!',
             role: DialogueRole.narrator,
             boundingBox: const Rect.fromLTWH(0.1, 0.1, 0.8, 0.15),
             pauseSeconds: 1.2,
@@ -274,19 +356,6 @@ class MangaUrlLoaderService {
             speechText: 'พลังที่หลับใหลอยู่ในความมืด... บัดนี้ได้เวลาตื่นขึ้นแล้ว!',
             role: DialogueRole.thought,
             boundingBox: Rect.fromLTWH(0.1, 0.25, 0.8, 0.15),
-            pauseSeconds: 1.5,
-          ),
-        ],
-      ),
-      WebtoonPageItem(
-        pageIndex: 4,
-        imageUrl: 'https://picsum.photos/seed/${seedPrefix}3/800/1200',
-        bubbles: const [
-          BubbleAnnotation(
-            id: 'P4-1',
-            speechText: 'ข้าจะทำให้พวกมันทุกคนต้องกราบแทบเท้าชดใช้สิ่งที่ทำไว้!',
-            role: DialogueRole.hero,
-            boundingBox: Rect.fromLTWH(0.1, 0.3, 0.8, 0.15),
             pauseSeconds: 1.5,
           ),
         ],

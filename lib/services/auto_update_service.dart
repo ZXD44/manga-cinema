@@ -21,7 +21,7 @@ class MangaAppReleaseInfo {
 }
 
 class AutoUpdateService {
-  static const String currentVersion = '1.0.2';
+  static const String currentVersion = '1.0.3';
 
 
   static const String githubRepo = 'ZXD44/manga-cinema';

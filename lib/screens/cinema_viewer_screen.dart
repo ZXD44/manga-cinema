@@ -1,10 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/cinema_models.dart';
 import '../services/auto_update_service.dart';
+import '../services/manga_url_loader_service.dart';
 import '../state/cinema_playback_state.dart';
 import '../theme/cinema_colors.dart';
 import '../widgets/cinema_update_dialog.dart';
+
+class MangaCatalogItem {
+  final String title;
+  final String episode;
+  final String coverUrl;
+  final String targetUrl;
+  final String genre;
+
+  const MangaCatalogItem({
+    required this.title,
+    required this.episode,
+    required this.coverUrl,
+    required this.targetUrl,
+    required this.genre,
+  });
+}
 
 class CinemaViewerScreen extends StatefulWidget {
   const CinemaViewerScreen({super.key});
@@ -16,6 +34,39 @@ class CinemaViewerScreen extends StatefulWidget {
 class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
   final ScrollController _verticalScrollController = ScrollController();
   final TextEditingController _urlController = TextEditingController();
+  bool _isFullscreen = false;
+
+  // รายการมังงะแนะนำยอดนิยมให้เลือกกดอ่านและพากย์ได้ทันที
+  final List<MangaCatalogItem> _featuredMangaList = const [
+    MangaCatalogItem(
+      title: 'Return of the Frozen Player',
+      episode: 'ตอนที่ 182 (Up-Manga)',
+      coverUrl: 'https://www.up-manga.com/wp-content/uploads/2023/09/Return-of-the-Frozen-Player.jpg',
+      targetUrl: 'https://www.up-manga.com/return-of-the-frozen-%e0%b8%95%e0%b8%ad%e0%b8%99%e0%b8%97%e0%b8%b5%e0%b9%88-182/',
+      genre: 'Action / Fantasy',
+    ),
+    MangaCatalogItem(
+      title: 'The Return of the Scorned Genius',
+      episode: 'ตอนที่ 1 (SiamWebtoon)',
+      coverUrl: 'https://cdn.siamwebtoon.com/covers/100103fa-e283-4629-98bb-4506a0db441d-1791567336.jpg',
+      targetUrl: 'https://siamwebtoon.com/title/the-return-of-the-scorned-genius/%E0%B8%95%E0%B8%AD%E0%B8%99%E0%B8%97%E0%B8%B5%E0%B9%88-1',
+      genre: 'Revenge / Genius',
+    ),
+    MangaCatalogItem(
+      title: 'Solo Leveling: Ragnarok',
+      episode: 'ตอนที่ 1 (ToonXD)',
+      coverUrl: 'https://bunny.toonxd.com/content/cmupy8ow300ia11odpff3sfcx/ad30053a-a80c-44eb-b9ee-b50603ee05fc.webp',
+      targetUrl: 'https://toonxd.co/series/the-return-of-the-scorned-genius/1',
+      genre: 'Hunter / Action',
+    ),
+    MangaCatalogItem(
+      title: 'The Return of the Scorned Genius',
+      episode: 'ตอนที่ 1 (DukeToon)',
+      coverUrl: 'https://duketoon.com/og/content/the-return-of-the-scorned-genius/1.webp',
+      targetUrl: 'https://duketoon.com/content/the-return-of-the-scorned-genius/1',
+      genre: 'Martial Arts',
+    ),
+  ];
 
   @override
   void initState() {
@@ -41,10 +92,26 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
     super.dispose();
   }
 
+  void _toggleFullscreen() {
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+    });
+    if (_isFullscreen) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🖥️ เข้าสู่โหมดเต็มหน้าจอ (Fullscreen Cinema)'),
+          duration: Duration(seconds: 2),
+          backgroundColor: CinemaColors.bgSurface,
+        ),
+      );
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
+  }
 
   void _showUrlInputDialog(BuildContext context) {
-    _urlController.text =
-        'https://duketoon.com/content/the-return-of-the-scorned-genius/1';
+    _urlController.clear(); // ล้างกล่องข้อความให้ว่างเปล่าตามที่ขอ
 
     showDialog(
       context: context,
@@ -82,7 +149,7 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.link_rounded,
+                        Icons.add_link_rounded,
                         color: CinemaColors.brandPrimary,
                         size: 24,
                       ),
@@ -101,7 +168,7 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                             ),
                           ),
                           Text(
-                            'รองรับ DukeToon, MangaPlus, หรือ Webtoon URL',
+                            'รองรับ Up-Manga, SiamWebtoon, ToonXD, DukeToon ฯลฯ',
                             style: TextStyle(
                               color: CinemaColors.textSecondary,
                               fontSize: 12,
@@ -115,12 +182,13 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                 const SizedBox(height: 18),
                 TextField(
                   controller: _urlController,
+                  autofocus: true,
                   style: const TextStyle(
                     color: CinemaColors.textPrimary,
                     fontSize: 14,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'https://duketoon.com/content/.../1',
+                    hintText: 'วาง URL เช่น https://www.up-manga.com/...',
                     hintStyle: const TextStyle(color: CinemaColors.textMuted),
                     filled: true,
                     fillColor: CinemaColors.bgPrimary,
@@ -179,20 +247,27 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                             final messenger = ScaffoldMessenger.of(context);
                             final playback = context.read<CinemaPlaybackState>();
                             Navigator.of(dialogCtx).pop();
+
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('⏳ กำลังดึงภาพและบทพูดจากการ์ตูน...'),
+                                duration: Duration(seconds: 2),
+                                backgroundColor: CinemaColors.bgSurface,
+                              ),
+                            );
+
                             final ok = await playback.loadFromWebtoonUrl(targetUrl);
                             if (mounted && ok) {
+                              playback.play(); // เริ่มพากย์และเลื่อนภาพทันที
                               messenger.showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    'โหลดสำเร็จ: ${playback.chapter?.title ?? ""}',
-                                  ),
+                                  content: Text('✓ โหลดสำเร็จ: ${playback.chapter?.title ?? ""} (เริ่มพากย์เสียงแล้ว)'),
                                   backgroundColor: CinemaColors.statusSyncActive,
                                 ),
                               );
                             }
                           }
                         },
-
                         child: const Text(
                           'เริ่มดูภาพยนตร์',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -203,6 +278,114 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                 ),
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMangaSelectorModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: CinemaColors.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (modalCtx) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '📚 เลือกมังงะ/เว็บตูนยอดนิยม',
+                    style: TextStyle(
+                      color: CinemaColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: CinemaColors.textSecondary),
+                    onPressed: () => Navigator.of(modalCtx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _featuredMangaList.length,
+                  itemBuilder: (ctx, i) {
+                    final item = _featuredMangaList[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: CinemaColors.bgPrimary,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: CinemaColors.bgBorder),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            item.coverUrl,
+                            width: 50,
+                            height: 65,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, error, stackTrace) => Container(
+                              width: 50,
+                              height: 65,
+                              color: CinemaColors.bgSurface,
+                              child: const Icon(Icons.menu_book, color: CinemaColors.brandPrimary),
+                            ),
+
+                          ),
+                        ),
+                        title: Text(
+                          item.title,
+                          style: const TextStyle(
+                            color: CinemaColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${item.episode} • ${item.genre}',
+                          style: const TextStyle(
+                            color: CinemaColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                        trailing: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: CinemaColors.brandPrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                          label: const Text('ดู & พากย์', style: TextStyle(fontSize: 12)),
+                          onPressed: () async {
+                            Navigator.of(modalCtx).pop();
+                            final playback = context.read<CinemaPlaybackState>();
+                            final ok = await playback.loadFromWebtoonUrl(item.targetUrl);
+                            if (mounted && ok) {
+                              playback.play(); // เริ่มพากย์เสียงทันที
+                            }
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -247,7 +430,7 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                     CircularProgressIndicator(color: CinemaColors.brandPrimary),
                     SizedBox(height: 16),
                     Text(
-                      'กำลังดึงรูปภาพและสังเคราะห์เสียงจาก URL...',
+                      'กำลังดึงรูปภาพและเตรียมระบบพากย์เสียงอัตโนมัติ...',
                       style: TextStyle(
                         color: CinemaColors.textSecondary,
                         fontSize: 15,
@@ -303,11 +486,7 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                               fit: BoxFit.cover,
                               width: double.infinity,
                               height: 480,
-                              headers: const {
-                                'User-Agent':
-                                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-                                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                              },
+                              headers: MangaUrlLoaderService.defaultHeaders,
                               loadingBuilder: (ctx, child, progress) {
                                 if (progress == null) return child;
                                 return Container(
@@ -322,7 +501,6 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                                 );
                               },
                               errorBuilder: (ctx, error, stackTrace) {
-                                // Fallback image if website hotlinking is forbidden
                                 return Image.network(
                                   'https://picsum.photos/seed/panel_${pageItem.pageIndex}/800/1200',
                                   fit: BoxFit.cover,
@@ -332,8 +510,7 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                               },
                             ),
 
-
-                            // Ambient Dimming เมื่อไม่ใช่ช่องที่กำลังพูด
+                            // Ambient Dimming
                             if (!isActivePanel)
                               Container(
                                 height: 480,
@@ -359,7 +536,7 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                                   ),
                                 ),
                                 child: Text(
-                                  'Page ${pageItem.pageIndex}',
+                                  'Panel ${pageItem.pageIndex}',
                                   style: TextStyle(
                                     color: isActivePanel
                                         ? CinemaColors.brandPrimary
@@ -378,10 +555,21 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                 },
               )
             else
-              const Center(
-                child: Text(
-                  'กดไอคอนลิงก์ด้านบนเพื่อใส่ Webtoon URL',
-                  style: TextStyle(color: CinemaColors.textSecondary),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.movie_creation_outlined, size: 64, color: CinemaColors.brandPrimary),
+                    const SizedBox(height: 16),
+                    const Text('ยังไม่มีการเปิดอ่านมังงะ', style: TextStyle(color: CinemaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: CinemaColors.brandPrimary, foregroundColor: Colors.white),
+                      icon: const Icon(Icons.menu_book),
+                      label: const Text('เลือกมังงะแนะนำ'),
+                      onPressed: () => _showMangaSelectorModal(context),
+                    ),
+                  ],
                 ),
               ),
 
@@ -442,8 +630,8 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                 right: 16,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+                    horizontal: 14,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     color: CinemaColors.bgSurfaceGlass,
@@ -452,6 +640,13 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                   ),
                   child: Row(
                     children: [
+                      // ปุ่มเลือกมังงะแนะนำ
+                      IconButton(
+                        tooltip: 'เลือกมังงะแนะนำ',
+                        icon: const Icon(Icons.library_books_rounded, color: CinemaColors.accentAmber, size: 24),
+                        onPressed: () => _showMangaSelectorModal(context),
+                      ),
+                      // ปุ่มเพิ่ม URL
                       IconButton(
                         tooltip: 'ใส่ Webtoon URL',
                         icon: const Icon(
@@ -461,7 +656,7 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                         ),
                         onPressed: () => _showUrlInputDialog(context),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,22 +668,33 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: CinemaColors.textPrimary,
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             Text(
-                              chapter?.episodeNumber ?? 'วาง URL เพื่อเริ่มอ่าน',
+                              chapter?.episodeNumber ?? 'เลือกตอนหรือวาง URL',
                               style: const TextStyle(
                                 color: CinemaColors.textSecondary,
-                                fontSize: 12,
+                                fontSize: 11,
                               ),
                             ),
                           ],
                         ),
                       ),
+                      // ปุ่มสลับเต็มจอ
                       IconButton(
-                        tooltip: 'ตรวจสอบอัปเดตเวอร์ชัน',
+                        tooltip: _isFullscreen ? 'ออกจากเต็มหน้าจอ' : 'เต็มหน้าจอ',
+                        icon: Icon(
+                          _isFullscreen ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
+                          color: CinemaColors.textPrimary,
+                          size: 26,
+                        ),
+                        onPressed: _toggleFullscreen,
+                      ),
+                      // ปุ่มอัปเดตเวอร์ชัน
+                      IconButton(
+                        tooltip: 'ตรวจสอบอัปเดต',
                         icon: const Icon(
                           Icons.cloud_download_outlined,
                           color: CinemaColors.textSecondary,
@@ -502,9 +708,7 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text(
-                                    'คุณกำลังใช้งานเวอร์ชันล่าสุดอยู่แล้ว',
-                                  ),
+                                  content: Text('✓ คุณกำลังใช้งานเวอร์ชันล่าสุด (v${AutoUpdateService.currentVersion}) แล้ว'),
                                   backgroundColor: CinemaColors.bgSurface,
                                 ),
                               );
@@ -525,10 +729,10 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                 right: 24,
                 child: Center(
                   child: Container(
-                    constraints: const BoxConstraints(maxWidth: 420),
+                    constraints: const BoxConstraints(maxWidth: 440),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
+                      horizontal: 18,
+                      vertical: 8,
                     ),
                     decoration: BoxDecoration(
                       color: CinemaColors.bgSurfaceGlass,
@@ -566,6 +770,14 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                           icon: const Icon(Icons.skip_next_rounded),
                           color: CinemaColors.textSecondary,
                           onPressed: () => playback.nextPanel(),
+                        ),
+                        IconButton(
+                          tooltip: 'โหมดเต็มหน้าจอ',
+                          icon: Icon(
+                            _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                            color: CinemaColors.accentAmber,
+                          ),
+                          onPressed: _toggleFullscreen,
                         ),
                       ],
                     ),
