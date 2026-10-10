@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/cinema_models.dart';
+import '../services/auto_update_service.dart';
 import '../state/cinema_playback_state.dart';
 import '../theme/cinema_colors.dart';
+import '../widgets/cinema_update_dialog.dart';
+
 
 class CinemaViewerScreen extends StatelessWidget {
   const CinemaViewerScreen({super.key});
@@ -143,40 +146,69 @@ class CinemaViewerScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: playback.isPlaying
-                            ? CinemaColors.statusSyncActive.withAlpha(40)
-                            : CinemaColors.bgBorder,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.fiber_manual_record,
-                            size: 10,
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'ตรวจสอบอัปเดตเวอร์ชัน',
+                          icon: const Icon(
+                            Icons.cloud_download_outlined,
+                            color: CinemaColors.textSecondary,
+                            size: 22,
+                          ),
+                          onPressed: () async {
+                            final info = await AutoUpdateService.checkForUpdate();
+                            if (context.mounted) {
+                              if (info != null && info.hasUpdate) {
+                                CinemaUpdateDialog.show(context, info);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('คุณกำลังใช้งานเวอร์ชันล่าสุด (v${AutoUpdateService.currentVersion}) อยู่แล้ว'),
+                                    backgroundColor: CinemaColors.bgSurface,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
                             color: playback.isPlaying
-                                ? CinemaColors.statusSyncActive
-                                : CinemaColors.textMuted,
+                                ? CinemaColors.statusSyncActive.withAlpha(40)
+                                : CinemaColors.bgBorder,
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            playback.isPlaying ? 'AI DUBBING' : 'PAUSED',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: playback.isPlaying
-                                  ? CinemaColors.statusSyncActive
-                                  : CinemaColors.textSecondary,
-                            ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.fiber_manual_record,
+                                size: 10,
+                                color: playback.isPlaying
+                                    ? CinemaColors.statusSyncActive
+                                    : CinemaColors.textMuted,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                playback.isPlaying ? 'AI DUBBING' : 'PAUSED',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: playback.isPlaying
+                                      ? CinemaColors.statusSyncActive
+                                      : CinemaColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+
                   ],
                 ),
               ),
