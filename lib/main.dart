@@ -37,7 +37,7 @@ class MangaCinemaApp extends StatelessWidget {
       WebtoonPageItem(
         pageIndex: 1,
         imageUrl:
-            'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1000&q=80',
+            'https://duketoon.com/og/content/the-return-of-the-scorned-genius/1.webp',
         bubbles: [
           BubbleAnnotation(
             id: 'B1',
@@ -51,7 +51,7 @@ class MangaCinemaApp extends StatelessWidget {
       WebtoonPageItem(
         pageIndex: 2,
         imageUrl:
-            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1000&q=80',
+            'https://picsum.photos/seed/manga_genius_1/800/1200',
         bubbles: [
           BubbleAnnotation(
             id: 'B2',
@@ -72,7 +72,7 @@ class MangaCinemaApp extends StatelessWidget {
       WebtoonPageItem(
         pageIndex: 3,
         imageUrl:
-            'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1000&q=80',
+            'https://picsum.photos/seed/manga_genius_2/800/1200',
         bubbles: [
           BubbleAnnotation(
             id: 'B4',
@@ -84,6 +84,7 @@ class MangaCinemaApp extends StatelessWidget {
         ],
       ),
     ];
+
 
     return MangaStoryChapter(
       title: 'The Return of the Scorned Genius',

@@ -58,8 +58,10 @@ set_new_version() {
     CURRENT_BUILD=$(get_current_build)
     NEW_BUILD=$((CURRENT_BUILD + 1))
     sed -i "s/^version: .*/version: $NEW_VER+$NEW_BUILD/" pubspec.yaml
-    echo -e "${GREEN}✓ อัปเดตเวอร์ชันเป็น: v$NEW_VER (Build $NEW_BUILD)${NC}"
+    sed -i "s/static const String currentVersion = .*/static const String currentVersion = '$NEW_VER';/" lib/services/auto_update_service.dart
+    echo -e "${GREEN}✓ อัปเดตเวอร์ชันเป็น: v$NEW_VER (Build $NEW_BUILD) ใน pubspec.yaml และ code เรียบร้อย${NC}"
 }
+
 
 do_build_apk() {
     local VER=$(get_current_version)

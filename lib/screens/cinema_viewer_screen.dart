@@ -303,6 +303,11 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                               fit: BoxFit.cover,
                               width: double.infinity,
                               height: 480,
+                              headers: const {
+                                'User-Agent':
+                                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                              },
                               loadingBuilder: (ctx, child, progress) {
                                 if (progress == null) return child;
                                 return Container(
@@ -310,27 +315,23 @@ class _CinemaViewerScreenState extends State<CinemaViewerScreen> {
                                   color: CinemaColors.bgSurface,
                                   child: const Center(
                                     child: CircularProgressIndicator(
-                                      color: CinemaColors.brandSecondary,
-                                      strokeWidth: 2,
+                                      color: CinemaColors.brandPrimary,
+                                      strokeWidth: 2.5,
                                     ),
                                   ),
                                 );
                               },
                               errorBuilder: (ctx, error, stackTrace) {
-                                return Container(
-
+                                // Fallback image if website hotlinking is forbidden
+                                return Image.network(
+                                  'https://picsum.photos/seed/panel_${pageItem.pageIndex}/800/1200',
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
                                   height: 480,
-                                  color: CinemaColors.bgSurface,
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.broken_image_rounded,
-                                      color: CinemaColors.textMuted,
-                                      size: 48,
-                                    ),
-                                  ),
                                 );
                               },
                             ),
+
 
                             // Ambient Dimming เมื่อไม่ใช่ช่องที่กำลังพูด
                             if (!isActivePanel)
